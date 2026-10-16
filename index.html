@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https://api.github.com; font-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="color-scheme" content="dark light">
 <title>Finanças da Casa · Android</title>
@@ -104,22 +104,22 @@
   </header>
 
   <div class="grid">
-    <article class="card" data-repo="stk-financas-capacitor" data-apk="financas-casa-capacitor.apk">
+    <article class="card" data-apk="financas-casa-capacitor.apk">
       <h2><svg class="i"><use href="#i-layers"/></svg>App completo <span class="tag rec">Recomendado</span></h2>
       <p>O Finanças da Casa inteiro, o mesmo do navegador, empacotado como app Android (Capacitor). Precisa de internet para entrar e sincronizar.</p>
       <div class="meta" aria-live="polite"></div>
       <div class="row">
-        <a class="btn" href="https://github.com/CelsoAlmeidaLF/stk-financas-capacitor/releases/latest/download/financas-casa-capacitor.apk"><svg class="i"><use href="#i-download"/></svg>Baixar APK</a>
+        <a class="btn" href="apk/financas-casa-capacitor.apk" download="financas-casa-capacitor.apk" type="application/vnd.android.package-archive"><svg class="i"><use href="#i-download"/></svg>Baixar APK</a>
         <div class="qr"><div></div>Aponte a câmera</div>
       </div>
     </article>
 
-    <article class="card" data-repo="stk-financas-kotlin" data-apk="financas-casa-kotlin.apk">
+    <article class="card" data-apk="financas-casa-kotlin.apk">
       <h2><svg class="i"><use href="#i-cpu"/></svg>Piloto nativo <span class="tag">Experimental</span></h2>
       <p>Versão nativa em Kotlin, em construção: por enquanto só a tela de lançamentos do mês, salva no aparelho. Para testar a nova base do app.</p>
       <div class="meta" aria-live="polite"></div>
       <div class="row">
-        <a class="btn sec" href="https://github.com/CelsoAlmeidaLF/stk-financas-kotlin/releases/latest/download/financas-casa-kotlin.apk"><svg class="i"><use href="#i-download"/></svg>Baixar APK</a>
+        <a class="btn sec" href="apk/financas-casa-kotlin.apk" download="financas-casa-kotlin.apk" type="application/vnd.android.package-archive"><svg class="i"><use href="#i-download"/></svg>Baixar APK</a>
         <div class="qr"><div></div>Aponte a câmera</div>
       </div>
     </article>
@@ -156,28 +156,33 @@
   const kb = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.round(n / 1024) + ' KB';
   const data = s => new Date(s).toLocaleDateString('pt-BR');
 
-  for (const card of document.querySelectorAll('.card[data-repo]')) {
-    const link = card.querySelector('.btn').href;
+  // APKs servidos por esta página (mesmo site): o download não passa pelo github.com,
+  // que no Android pode ser capturado pelo app do GitHub e não baixar nada.
+  const cards = document.querySelectorAll('.card[data-apk]');
+  for (const card of cards) {
+    const link = card.querySelector('.btn').href; // já absoluto
 
     // QR para quem abre no computador: o celular lê e baixa direto.
     try {
       const qr = qrcode(0, 'M'); qr.addData(link); qr.make();
-      card.querySelector('.qr div').innerHTML = qr.createSvgTag({ cellSize: 3, margin: 0, scalable: true, alt: { text: 'QR code do download', id: 'qr-' + card.dataset.repo } });
+      card.querySelector('.qr div').innerHTML = qr.createSvgTag({ cellSize: 3, margin: 0, scalable: true, alt: { text: 'QR code do download', id: 'qr-' + card.dataset.apk } });
     } catch (_) { card.querySelector('.qr').remove(); }
-
-    // Versão e tamanho da última Release (sem isso, o link continua valendo).
-    fetch(`https://api.github.com/repos/CelsoAlmeidaLF/${card.dataset.repo}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } })
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(rel => {
-        const apk = (rel.assets || []).find(a => a.name === card.dataset.apk);
-        const meta = card.querySelector('.meta');
-        for (const t of [rel.tag_name, apk && kb(apk.size), rel.published_at && 'publicado em ' + data(rel.published_at)]) {
-          if (!t) continue;
-          const s = document.createElement('span'); s.textContent = t; meta.append(s);
-        }
-      })
-      .catch(() => {});
   }
+
+  // Versão, tamanho e data (gravados por scripts/publicar-apk.sh nos repos dos apps).
+  fetch('apk/versoes.json', { cache: 'no-cache' })
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(v => {
+      for (const card of cards) {
+        const info = v[card.dataset.apk]; if (!info) continue;
+        const meta = card.querySelector('.meta');
+        for (const t of [info.versao, info.tamanho && kb(info.tamanho), info.data && 'publicado em ' + data(info.data + 'T12:00:00')]) {
+          if (!t) continue;
+          const el = document.createElement('span'); el.textContent = t; meta.append(el);
+        }
+      }
+    })
+    .catch(() => {});
 </script>
 </body>
 </html>
